@@ -205,6 +205,26 @@ test("real member → upload → preview → pending → admin approval → publ
   const memberContext = await browser.newContext({ baseURL: origin });
   const memberPage = await memberContext.newPage();
   await login(memberPage, username, password);
+  const memberSession = await (await memberPage.request.get("/api/auth/me")).json();
+  const memberShop = await (await memberPage.request.get("/api/me/shop")).json();
+  const paused = await memberPage.request.put("/api/me/shop", {
+    headers: { Origin: origin, "X-CSRF-Token": memberSession.csrf }, data: { ...memberShop, active: false },
+  });
+  expect(paused.status()).toBe(200);
+  await memberPage.goto("/dashboard");
+  await expect(memberPage.getByText("ร้านของคุณยังปิดอยู่", { exact: true })).toBeVisible();
+  await expect(memberPage.locator(".own-item .status")).toHaveText("อนุมัติแล้ว");
+  await expect(memberPage.getByRole("link", { name: "ดูประกาศ", exact: true })).toHaveCount(0);
+  expect((await browser.newPage().then(async p => { try { return (await p.request.get(`${origin}/api/amulets/${listing.id}`)).status(); } finally { await p.close(); } }))).toBe(404);
+  await memberPage.screenshot({ path: `output/playwright/shop-closed-warning-${info.project.name}.png`, fullPage: true });
+  await memberPage.getByRole("link", { name: "เปิดร้านจากตั้งค่าร้านค้า", exact: true }).click();
+  await memberPage.getByLabel("เปิดร้านสาธารณะ (ปิดเพื่อพักร้านและซ่อนประกาศทั้งหมด)", { exact: true }).check();
+  await memberPage.getByRole("button", { name: "บันทึกร้านค้า", exact: true }).click();
+  await expect(memberPage.getByText("บันทึกร้านค้าแล้ว", { exact: true })).toBeVisible();
+  await memberPage.goto("/dashboard");
+  await expect(memberPage.getByText("ร้านของคุณยังปิดอยู่", { exact: true })).toHaveCount(0);
+  await expect(memberPage.getByRole("link", { name: "ดูประกาศ", exact: true })).toBeVisible();
+  expect((await memberPage.request.get(`/api/amulets/${listing.id}`)).status()).toBe(200);
   await login(page, "e2e_admin", "E2E-test-only-admin-593!");
   await page.goto(`/admin/users?q=${username}`);
   const resetButton = page.getByRole("button", { name: "รีเซ็ตรหัสผ่าน", exact: true });

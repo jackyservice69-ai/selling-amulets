@@ -119,6 +119,7 @@ export function MemberLayout() {
 export function MemberListings() {
   const [params, setParams] = useSearchParams(),
     list = useData<Page<Amulet>>(`/me/amulets?page=${params.get("page") ?? 1}`),
+    shop = useData<Shop>("/me/shop"),
     [close, setClose] = useState<Amulet | null>(null),
     [busy, setBusy] = useState(false),
     [error, setError] = useState<unknown>(null),
@@ -141,6 +142,11 @@ export function MemberListings() {
       <div className="inline-note">
         ประกาศใหม่และประกาศที่แก้ไขจะเข้าสู่การตรวจสอบก่อนเผยแพร่
       </div>
+      {shop.data?.active === false && <div className="inline-note" role="status">
+        <strong>ร้านของคุณยังปิดอยู่</strong>
+        <p>ประกาศที่อนุมัติแล้วจะยังไม่แสดงบนหน้าสาธารณะจนกว่าจะเปิดร้าน</p>
+        <Link className="text-link" to="/dashboard/shop">เปิดร้านจากตั้งค่าร้านค้า</Link>
+      </div>}
       <State {...list} retry={list.reload} empty={!list.data?.items.length}>
         <div className="own-list">
           {list.data?.items.map((a) => (
@@ -153,7 +159,7 @@ export function MemberListings() {
               />
               <div className="own-item-text">
                 <span className={`status ${a.status.toLowerCase()}`}>
-                  {statuses[a.status]}
+                  {a.status === "APPROVED" && shop.data?.active !== true ? "อนุมัติแล้ว" : statuses[a.status]}
                 </span>
                 <h2>{a.title}</h2>
                 <p>
@@ -171,7 +177,7 @@ export function MemberListings() {
                     แก้ไข
                   </Link>
                 </Button>
-                {a.status === "APPROVED" && (
+                {a.status === "APPROVED" && shop.data?.active === true && (
                   <Button variant="ghost" size="sm" asChild>
                     <Link to={`/amulet/${a.id}`}>ดูประกาศ</Link>
                   </Button>
