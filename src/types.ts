@@ -168,4 +168,4 @@ export const date = (value: string) =>
     timeZone: "Asia/Bangkok",
   }).format(new Date(value));
 export const media = (id: string | null | undefined, thumb = false) =>
-  id ? `/api/media/${id}${thumb ? "?thumb=1" : ""}` : "/brand/amulet-1.webp";
+  id ? `/api/media/${id}${thumb ? "?thumb=1" : ""}` : "/brand/mark.svg";

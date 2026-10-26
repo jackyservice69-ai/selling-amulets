@@ -8,14 +8,24 @@
 |---|---|
 | Prisma generate / migrations | ผ่าน migration 003–006 ทั้ง `amulet_market` และ `amulet_market_test`; สำรองฐานพัฒนาก่อนเปลี่ยน schema |
 | Typecheck / lint | ผ่าน frontend และ backend |
-| MySQL integration | **56/56 ผ่าน** ไม่มี skip; รอบล่าสุด 21:41 น. ดู `output/test-results.json` |
-| Browser E2E | **14/14 ผ่าน** ไม่มี skip/retry ในรอบแยก Desktop 1440×1000 และ Pixel 7 Chromium อย่างละ 7 tests ดู `output/playwright/verification-summary.json` และ `results-desktop.json` / `results-mobile.json` |
+| MySQL integration | **60/60 ผ่าน** ไม่มี skip; รอบล่าสุด 22:32 น. ดู `output/test-results.json` |
+| Browser E2E | **16/16 ผ่าน** ไม่มี skip/retry ในรอบแยก Desktop 1440×1000 และ Pixel 7 Chromium อย่างละ 8 tests ดู `output/playwright/verification-summary.json` และ `results-desktop.json` / `results-mobile.json` |
 | Production build | `npm run build` ผ่าน Vite และ compiled Express |
 | Compiled server | HTTP health, static root, asset และ SPA fallback ผ่าน ดู `output/release-smoke.json` |
 | บัญชีเดิม / schema | บัญชีผู้ดูแลเดิมใช้ชื่อผู้ใช้และรหัสผ่านเดิมได้ เข้า admin ได้; ไม่มีคอลัมน์อีเมลและตาราง token อีเมล ดู `output/username-auth-smoke.json` |
 | Production config | โหลด config ด้วย HTTPS และ session secret โดยไม่มี SMTP ได้ ดู `output/username-auth-smoke.json` |
 
 ## กรณีทดสอบที่เกี่ยวกับการเปลี่ยนแปลง
+
+### สร้างสมาชิกตามสิทธิ์, Social และ production
+
+- API เพิ่ม 4 tests สำหรับ ADMIN สร้างเฉพาะ MEMBER, SUPER_ADMIN สร้างเจ้าหน้าที่ได้, ปฏิเสธ MEMBER/MODERATOR, ตรวจ CSRF/รหัสผู้ดูแล/ยืนยันรหัส, ไม่สร้างซ้ำ, ไม่บันทึกรหัสลง audit และใช้ชื่อผู้ใช้ที่มี @ ได้
+- Social ทดสอบ HTTPS validation, สิทธิ์ ADMIN/SUPER_ADMIN และไม่เขียนทับ registrationEnabled; การบันทึก settings ทั่วไปคง Social ล่าสุด
+- E2E ทั้ง desktop/mobile สร้าง ADMIN ผ่านฟอร์มจริง ตรวจรหัสผู้ดูแลผิดแล้วข้อมูลยังอยู่, ADMIN เห็นสิทธิ์ MEMBER เท่านั้น, บันทึก Social/แก้ validation/reload และตรวจลิงก์ที่เมนูติดต่อเรา
+- PostgreSQL บน Neon สาขา release-validation-20261026 ผ่าน migration, seed เฉพาะข้อมูลระบบ และ API health/signup/create-user/social/search/support ดู output/postgres-validation.json
+- Production HTTPS ผ่าน health, admin login, admin APIs, SPA routes, ป๊อปอัปอ่านภาพจาก R2 และอัปโหลด PNG ผ่าน Vercel API ได้ WebP ใน R2 จริง ดู output/live-production-verification.json; ลบเฉพาะไฟล์/แถวที่สร้างเพื่อ health check หลังตรวจแล้ว ไม่เหลือพระตัวอย่างในฐานจริง
+- Production ย้ายเฉพาะป๊อปอัปต้อนรับ 1 รายการที่ยังอยู่ใน local ล่าสุด ไม่คืนรายการป๊อปอัปที่ผู้ใช้ลบไปแล้ว ไม่มีการย้ายสมาชิก/ร้าน/พระสาธิตจาก local
+- Static premium audit ล่าสุด 25 รายการจากข้อจำกัดการตรวจ shared components (เดิม 24 + shared Textarea ในฟอร์มสร้างสมาชิก) ไม่มี unresolved ownership; ไม่อ้างว่า strict static audit ผ่าน
 
 ### บีบอัดรูปอัปโหลดและสวิตช์รับสมัครสมาชิก
 
