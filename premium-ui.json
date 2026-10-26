@@ -1,0 +1,26 @@
+{
+  "profile": "product-admin",
+  "sourceRoots": ["src"],
+  "locale": "th-TH",
+  "canonicalMap": "UX-CONTRACT.md",
+  "requiredCapabilities": [
+    "Select/Listbox",
+    "Date",
+    "Form",
+    "Scrollbar",
+    "Toast",
+    "CRUD"
+  ],
+  "ownership": { "Select/Listbox": "native", "Date": "typed" },
+  "requiredCommands": ["typecheck", "lint", "integration", "e2e"],
+  "commands": {
+    "typecheck": "npm run typecheck",
+    "lint": "npm run lint",
+    "integration": "npm test",
+    "e2e": "npm run test:e2e"
+  },
+  "evidence": {
+    "crudFullFlow": "tests/e2e/marketplace.spec.ts",
+    "failurePaths": "tests/integration.test.ts"
+  }
+}

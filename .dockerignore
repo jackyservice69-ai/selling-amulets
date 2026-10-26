@@ -1,0 +1,14 @@
+node_modules
+.tools
+.git
+.env
+.env.*.local
+uploads
+dist
+dist-server
+test-results
+playwright-report
+backups
+
+output
+.playwright-cli

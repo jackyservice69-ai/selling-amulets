@@ -1,0 +1,12 @@
+.env*
+.tools
+backups
+uploads
+output
+test-results
+tests
+.git
+node_modules
+dist-server
+docs/history
+public/brand/amulet-*.webp

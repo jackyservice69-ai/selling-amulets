@@ -1,0 +1,45 @@
+import {test,expect} from '@playwright/test';
+const origin='http://localhost:5174';
+test('authorized staff create accounts and edit social channels that appear in contact navigation',async({page,browser},info)=>{
+ const login=await page.request.post('/api/auth/login',{headers:{Origin:origin},data:{username:'e2e_admin',password:'E2E-test-only-admin-593!'}});expect(login.status()).toBe(200);
+ const auth=await login.json(),headers={Origin:origin,'X-CSRF-Token':auth.csrf};
+ const settings=await (await page.request.get('/api/settings')).json();
+ const suffix=`${info.project.name}_${Date.now()}`;
+ const manager=await browser.newContext({...info.project.use,baseURL:origin});
+ try{
+  await page.goto('/admin/users');await page.getByRole('button',{name:'เพิ่มสมาชิก',exact:true}).click();
+  const dialog=page.getByRole('dialog');
+  await dialog.getByLabel('ชื่อที่ใช้แสดง',{exact:true}).fill('ผู้ดูแลที่สร้างจากหลังบ้าน');
+  await dialog.getByLabel('ชื่อผู้ใช้ใหม่',{exact:true}).fill(`manager_${suffix}`);
+  await dialog.getByLabel('รหัสผ่านสมาชิกใหม่',{exact:true}).fill('Manager-test-82!');
+  await dialog.getByLabel('ยืนยันรหัสผ่านสมาชิกใหม่',{exact:true}).fill('Manager-test-82!');
+  await dialog.getByLabel('สิทธิ์บัญชีใหม่',{exact:true}).selectOption('ADMIN');
+  await dialog.getByLabel('เหตุผลการสร้างบัญชี',{exact:true}).fill('เพิ่มผู้ดูแลตามสิทธิ์เพื่อทดสอบระบบ');
+  await dialog.getByLabel('รหัสผ่านของผู้ดูแล',{exact:true}).fill('wrong');
+  await dialog.getByRole('button',{name:'สร้างบัญชีสมาชิก',exact:true}).click();
+  await expect(dialog.getByRole('alert')).toContainText('รหัสผ่านของผู้ดูแลไม่ถูกต้อง');
+  await expect(dialog.getByLabel('ชื่อผู้ใช้ใหม่',{exact:true})).toHaveValue(`manager_${suffix}`);
+  await dialog.getByLabel('รหัสผ่านของผู้ดูแล',{exact:true}).fill('E2E-test-only-admin-593!');
+  await page.screenshot({path:`output/playwright/admin-create-${info.project.name}.png`});
+  await dialog.getByRole('button',{name:'สร้างบัญชีสมาชิก',exact:true}).click();await expect(dialog).not.toBeVisible();
+  const staff=await manager.newPage();
+  const signed=await staff.request.post('/api/auth/login',{headers:{Origin:origin},data:{username:`manager_${suffix}`,password:'Manager-test-82!'}});expect(signed.status()).toBe(200);
+  await staff.goto('/admin/users');await staff.getByRole('button',{name:'เพิ่มสมาชิก',exact:true}).click();
+  await expect(staff.getByRole('dialog').getByLabel('สิทธิ์บัญชีใหม่',{exact:true})).toBeDisabled();
+  await expect(staff.getByRole('dialog').locator('select option')).toHaveCount(1);
+  await staff.keyboard.press('Escape');
+  await staff.goto('/admin/social');
+  await staff.getByRole('button',{name:'เพิ่มช่องทาง Social',exact:true}).click();
+  const next=settings.socialLinks.length+1;
+  await staff.getByLabel(`ชื่อช่องทาง ${next}`,{exact:true}).fill(`Social ${suffix}`);
+  await staff.getByLabel(`ลิงก์ช่องทาง ${next}`,{exact:true}).fill('http://example.com');
+  await staff.getByRole('button',{name:'บันทึกช่องทาง Social',exact:true}).click();await expect(staff.getByRole('alert')).toBeVisible();
+  await staff.getByLabel(`ลิงก์ช่องทาง ${next}`,{exact:true}).fill('https://example.com/contact');
+  await staff.getByRole('button',{name:'บันทึกช่องทาง Social',exact:true}).click();await expect(staff.getByText('บันทึกช่องทาง Social แล้ว',{exact:true})).toBeVisible();
+  await staff.reload();await expect(staff.getByLabel(`ชื่อช่องทาง ${next}`,{exact:true})).toHaveValue(`Social ${suffix}`);
+  await staff.screenshot({path:`output/playwright/admin-social-${info.project.name}.png`,fullPage:true});
+  await page.goto('/contact');await expect(page.locator('.nav-inner a[href="/contact"]')).toHaveText('ติดต่อเรา');
+  await expect(page.locator('main').getByRole('link',{name:`Social ${suffix}`,exact:true})).toHaveAttribute('href','https://example.com/contact');
+  await expect(page.locator('main').getByRole('link',{name:`Social ${suffix}`,exact:true})).toHaveAttribute('rel','noopener noreferrer');
+ }finally{await page.request.put('/api/admin/social',{headers,data:{socialLinks:settings.socialLinks}});await manager.close();}
+});

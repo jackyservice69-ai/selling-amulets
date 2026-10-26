@@ -1,0 +1,425 @@
+generator client {
+  provider = "prisma-client-js"
+  output = "../../.generated/postgres"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
+}
+
+enum RoleName {
+  SUPER_ADMIN
+  ADMIN
+  MODERATOR
+  MEMBER
+}
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum AmuletStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+  CLOSED
+}
+
+enum ListingType {
+  SALE
+  SHOW
+}
+
+model Role {
+  id          String           @id @default(cuid())
+  name        RoleName         @unique
+  users       User[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id    String           @id @default(cuid())
+  name  String           @unique
+  roles RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model User {
+  id            String                @id @default(cuid())
+  username      String                @unique @db.VarChar(40)
+  passwordHash  String                @db.VarChar(100)
+  roleId        String
+  role          Role                  @relation(fields: [roleId], references: [id])
+  status        AccountStatus         @default(ACTIVE)
+  referralCode  String                @unique @db.VarChar(20)
+  maxListings   Int                   @default(50)
+  createdAt     DateTime              @default(now())
+  profile       UserProfile?
+  shop          Shop?
+  sessions      Session[]
+  notifications Notification[]
+  referrals     Referral[]            @relation("referrer")
+  referred      Referral?             @relation("referred")
+  favorites     Favorite[]
+  uploads       Upload[]
+  reports       Report[]
+  audits        AuditLog[]
+  histories     AmuletStatusHistory[]
+  popupViews    PopupView[]
+  supportTickets SupportTicket[]
+  supportMessages SupportMessage[]
+
+  @@index([status, createdAt])
+  @@map("users")
+}
+
+model UserProfile {
+  userId      String  @id
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName String  @db.VarChar(100)
+  phone       String? @db.VarChar(30)
+  avatarId    String?
+
+  @@map("user_profiles")
+}
+
+model Session {
+  id        String   @id
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  csrf      String   @db.VarChar(100)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId, expiresAt])
+  @@map("sessions")
+}
+
+model Shop {
+  id          String        @id @default(cuid())
+  userId      String        @unique
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slug        String        @unique @db.VarChar(100)
+  name        String        @db.VarChar(120)
+  description String        @db.Text
+  logoId      String?
+  coverId     String?
+  active      Boolean       @default(true)
+  featured    Boolean       @default(false)
+  views       Int           @default(0)
+  createdAt   DateTime      @default(now())
+  contacts    ShopContact[]
+  amulets     Amulet[]
+
+  @@index([active, featured])
+  @@map("shops")
+}
+
+model ShopContact {
+  id        String  @id @default(cuid())
+  shopId    String
+  shop      Shop    @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  type      String  @db.VarChar(30)
+  value     String  @db.VarChar(500)
+  visible   Boolean @default(false)
+  primary   Boolean @default(false)
+  sortOrder Int     @default(0)
+
+  @@index([shopId, visible, sortOrder])
+  @@map("shop_contacts")
+}
+
+model Category {
+  id        String     @id @default(cuid())
+  name      String     @db.VarChar(100)
+  slug      String     @unique @db.VarChar(100)
+  parentId  String?
+  parent    Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children  Category[] @relation("CategoryTree")
+  imageId   String?
+  sortOrder Int        @default(0)
+  active    Boolean    @default(true)
+  amulets   Amulet[]
+
+  @@map("categories")
+}
+
+model Amulet {
+  id              String                @id @default(cuid())
+  shopId          String
+  shop            Shop                  @relation(fields: [shopId], references: [id])
+  categoryId      String
+  category        Category              @relation(fields: [categoryId], references: [id])
+  title           String                @db.VarChar(200)
+  description     String                @db.Text
+  temple          String                @default("") @db.VarChar(150)
+  master          String                @default("") @db.VarChar(150)
+  year            String                @default("") @db.VarChar(30)
+  material        String                @default("") @db.VarChar(100)
+  size            String                @default("") @db.VarChar(100)
+  condition       String                @default("") @db.VarChar(100)
+  price           Decimal?              @db.Decimal(12, 2)
+  priceType       String                @default("FIXED") @db.VarChar(20)
+  listingType     ListingType           @default(SALE)
+  status          AmuletStatus          @default(PENDING)
+  rejectionReason String?               @db.Text
+  featured        Boolean               @default(false)
+  version         Int                   @default(1)
+  views           Int                   @default(0)
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  images          AmuletImage[]
+  histories       AmuletStatusHistory[]
+  favorites       Favorite[]
+  reports         Report[]
+
+  @@index([status, createdAt])
+  @@index([status, categoryId, price])
+  @@index([status, views])
+  @@index([shopId, status])
+  @@map("amulets")
+}
+
+model Upload {
+  id           String        @id @default(cuid())
+  userId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key          String        @unique @db.VarChar(200)
+  thumbnailKey String        @db.VarChar(200)
+  createdAt    DateTime      @default(now())
+  images       AmuletImage[]
+
+  @@map("uploads")
+}
+
+model AmuletImage {
+  id        String @id @default(cuid())
+  amuletId  String
+  amulet    Amulet @relation(fields: [amuletId], references: [id], onDelete: Cascade)
+  uploadId  String
+  upload    Upload @relation(fields: [uploadId], references: [id])
+  sortOrder Int    @default(0)
+
+  @@unique([amuletId, uploadId])
+  @@index([amuletId, sortOrder])
+  @@map("amulet_images")
+}
+
+model AmuletStatusHistory {
+  id        String       @id @default(cuid())
+  amuletId  String
+  amulet    Amulet       @relation(fields: [amuletId], references: [id], onDelete: Cascade)
+  actorId   String
+  actor     User         @relation(fields: [actorId], references: [id])
+  status    AmuletStatus
+  reason    String?      @db.Text
+  createdAt DateTime     @default(now())
+
+  @@index([amuletId, createdAt])
+  @@map("amulet_status_histories")
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String    @db.VarChar(200)
+  body      String    @db.Text
+  href      String    @db.VarChar(300)
+  eventKey  String    @unique @db.VarChar(190)
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, readAt, createdAt])
+  @@map("notifications")
+}
+
+model Referral {
+  id         String   @id @default(cuid())
+  referrerId String
+  referrer   User     @relation("referrer", fields: [referrerId], references: [id])
+  referredId String   @unique
+  referred   User     @relation("referred", fields: [referredId], references: [id])
+  createdAt  DateTime @default(now())
+
+  @@index([referrerId, createdAt])
+  @@map("referrals")
+}
+
+model Favorite {
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amuletId  String
+  amulet    Amulet   @relation(fields: [amuletId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, amuletId])
+  @@map("favorites")
+}
+
+model Popup {
+  id             String      @id @default(cuid())
+  name           String      @db.VarChar(100)
+  title          String      @db.VarChar(200)
+  body           String      @db.Text
+  imageId        String?
+  buttonText     String?     @db.VarChar(100)
+  url            String?     @db.VarChar(500)
+  active         Boolean     @default(false)
+  startsAt       DateTime
+  endsAt         DateTime
+  audience       String      @default("ALL") @db.VarChar(20)
+  page           String      @default("/") @db.VarChar(200)
+  delaySeconds   Int         @default(0)
+  maxViews       Int         @default(1)
+  oncePerSession Boolean     @default(true)
+  intervalHours  Int         @default(24)
+  views          PopupView[]
+
+  @@index([active, startsAt, endsAt])
+  @@map("popups")
+}
+
+model PopupView {
+  id         String   @id @default(cuid())
+  popupId    String
+  popup      Popup    @relation(fields: [popupId], references: [id], onDelete: Cascade)
+  visitorKey String   @db.VarChar(100)
+  sessionKey String   @db.VarChar(100)
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt  DateTime @default(now())
+
+  @@index([popupId, visitorKey, createdAt])
+  @@map("popup_views")
+}
+
+model Banner {
+  id        String   @id @default(cuid())
+  title     String   @db.VarChar(200)
+  imageId   String?
+  url       String   @db.VarChar(500)
+  sortOrder Int      @default(0)
+  active    Boolean  @default(false)
+  startsAt  DateTime
+  endsAt    DateTime
+
+  @@index([active, startsAt, endsAt])
+  @@map("banners")
+}
+
+model Announcement {
+  id        String   @id @default(cuid())
+  title     String   @db.VarChar(200)
+  body      String   @db.Text
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@map("announcements")
+}
+
+model Report {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  amuletId   String
+  amulet     Amulet   @relation(fields: [amuletId], references: [id])
+  reason     String   @db.VarChar(100)
+  details    String   @db.Text
+  resolved   Boolean  @default(false)
+  resolution String?  @db.Text
+  createdAt  DateTime @default(now())
+
+  @@index([resolved, createdAt])
+  @@map("reports")
+}
+
+enum SupportStatus {
+  OPEN
+  ANSWERED
+  CLOSED
+}
+
+model SupportTicket {
+  id        String @id @default(cuid())
+  userId    String
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject   String @db.VarChar(160)
+  status    SupportStatus @default(OPEN)
+  version   Int @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  messages  SupportMessage[]
+
+  @@index([userId, updatedAt])
+  @@index([status, updatedAt])
+  @@map("support_tickets")
+}
+
+model SupportMessage {
+  id              String @id @default(cuid())
+  ticketId        String
+  ticket          SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorId        String
+  author          User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  body            String @db.Text
+  isStaff         Boolean @default(false)
+  clientRequestId String @db.VarChar(36)
+  createdAt       DateTime @default(now())
+
+  @@unique([authorId, clientRequestId])
+  @@index([ticketId, createdAt, id])
+  @@map("support_messages")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String
+  actor     User     @relation(fields: [actorId], references: [id])
+  action    String   @db.VarChar(100)
+  entityId  String   @db.VarChar(100)
+  detail    String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model SiteSetting {
+  id    String @id @default("site")
+  value Json
+
+  @@map("site_settings")
+}
+
+model ViewEvent {
+  id         String   @id @default(cuid())
+  entityId   String   @db.VarChar(100)
+  type       String   @db.VarChar(20)
+  visitorKey String   @db.VarChar(100)
+  day        String   @db.VarChar(10)
+  createdAt  DateTime @default(now())
+
+  @@unique([entityId, visitorKey, day])
+  @@index([createdAt, type])
+  @@map("view_events")
+}
