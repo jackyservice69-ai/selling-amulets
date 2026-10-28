@@ -47,6 +47,7 @@ import { settings, processUpload, getObject } from "./storage.js";
 import { supportRouter } from "./support.js";
 import {
   saveListing,
+  deleteListing,
   moderate,
   searchListings,
   paging,
@@ -405,7 +406,7 @@ app.put("/api/me/profile", auth, async (req, res) => {
 });
 app.get("/api/me/amulets", auth, async (req, res) => {
   const { page, limit, skip } = paging(req.query),
-    where = { shop: { userId: req.user!.id } };
+    where = { deletedAt: null, shop: { userId: req.user!.id } };
   const [items, total] = await db.$transaction([
     db.amulet.findMany({
       where,
@@ -423,7 +424,7 @@ app.get("/api/me/amulets", auth, async (req, res) => {
 });
 app.get("/api/me/amulets/:id", auth, async (req, res) => {
   const a = await db.amulet.findFirst({
-    where: { id: String(req.params.id), shop: { userId: req.user!.id } },
+    where: { id: String(req.params.id), deletedAt: null, shop: { userId: req.user!.id } },
     include: {
       ...publicInclude,
       histories: { orderBy: { createdAt: "desc" }, take: 50 },
@@ -438,18 +439,21 @@ app.post("/api/me/amulets", auth, async (req, res) =>
 app.put("/api/me/amulets/:id", auth, async (req, res) =>
   res.json(await saveListing(req.user!.id, req.body, String(req.params.id))),
 );
+app.delete("/api/me/amulets/:id", auth, async (req, res) =>
+  res.json(await deleteListing(req.user!.id, String(req.params.id), req.body)),
+);
 app.post("/api/me/amulets/:id/close", auth, async (req, res) => {
   const id = String(req.params.id);
   await db.$transaction(async (tx) => {
     const a = await tx.amulet.findFirst({
-      where: { id, shop: { userId: req.user!.id } },
+      where: { id, deletedAt: null, shop: { userId: req.user!.id } },
     });
     if (!a) throw new HttpError(404, "ไม่พบประกาศของคุณ");
     if (a.status === "SUSPENDED")
       throw new HttpError(403, "ประกาศถูกระงับ กรุณาติดต่อผู้ดูแล");
     if (a.status === "CLOSED") return;
     await tx.amulet.update({
-      where: { id },
+      where: { id, version: a.version, deletedAt: null },
       data: { status: "CLOSED", version: { increment: 1 } },
     });
     await tx.amuletStatusHistory.create({
@@ -657,11 +661,11 @@ app.get("/api/admin/stats", async (_req, res) => {
   ] = await Promise.all([
     db.user.count(),
     db.shop.count(),
-    db.amulet.count(),
-    db.amulet.count({ where: { status: "PENDING" } }),
-    db.amulet.count({ where: { status: "APPROVED" } }),
-    db.amulet.count({ where: { status: "REJECTED" } }),
-    db.amulet.count({ where: { status: "SUSPENDED" } }),
+    db.amulet.count({ where: { deletedAt: null } }),
+    db.amulet.count({ where: { status: "PENDING", deletedAt: null } }),
+    db.amulet.count({ where: { status: "APPROVED", deletedAt: null } }),
+    db.amulet.count({ where: { status: "REJECTED", deletedAt: null } }),
+    db.amulet.count({ where: { status: "SUSPENDED", deletedAt: null } }),
     db.report.count({ where: { resolved: false } }),
     db.viewEvent.count(),
     db.user.count({
@@ -695,6 +699,7 @@ app.get("/api/admin/amulets", async (req, res) => {
     .optional()
     .parse(req.query.status || undefined);
   const where: Prisma.AmuletWhereInput = {
+    deletedAt: null,
     ...(status ? { status } : {}),
     ...(req.query.q
       ? { title: containsText(String(req.query.q).slice(0, 200)) }
@@ -722,6 +727,9 @@ app.get("/api/admin/amulets", async (req, res) => {
 app.post("/api/admin/amulets/:id/status", async (req, res) =>
   res.json(await moderate(req.user!.id, String(req.params.id), req.body)),
 );
+app.delete("/api/admin/amulets/:id", roles(managerRoles), async (req, res) =>
+  res.json(await deleteListing(req.user!.id, String(req.params.id), req.body, true)),
+);
 app.put(
   "/api/admin/amulets/:id/featured",
   roles(managerRoles),
@@ -729,7 +737,7 @@ app.put(
     const { featured } = z.object({ featured: z.boolean() }).parse(req.body);
     res.json(
       await db.amulet.update({
-        where: { id: String(req.params.id) },
+        where: { id: String(req.params.id), deletedAt: null },
         data: { featured },
       }),
     );

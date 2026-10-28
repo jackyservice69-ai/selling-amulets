@@ -1,5 +1,7 @@
 # UI behavior contract
 
+User request 2026-10-28: owners delete their listings from MemberListings, and ADMIN/SUPER_ADMIN delete any listing from AdminListings; MODERATOR does not see the manager delete action. Shared DeleteListingDialog uses the existing Radix Modal contract, initially focuses Cancel, names the listing, explains that reposting requires a new listing, and requires a reason for a manager deletion. Dismissal and duplicate submission are blocked while busy. Errors and entered reasons remain in the dialog for retry. Success closes the dialog, refreshes list/counts, and steps back one page if its last item was deleted. Server authorization, version conflicts, soft deletion, private reports/media and notification behavior are documented in docs/API.md. Evidence: tests/listing-deletion.test.ts and tests/e2e/listing-deletion.spec.ts.
+
 Business source: PRODUCT.md (user supplied specification), server/services and Prisma schema. Publication requires approval; all private fields and contacts remain private by default; there are no payments.
 
 | Capability     | Canonical owner                               | Source of truth          | Allowed variants              | Verification      |

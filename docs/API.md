@@ -1,5 +1,18 @@
 # API — ตลาดพระเครื่อง
 
+## ลบประกาศ (28 ตุลาคม 2026)
+
+ทุกเส้นทางใช้ prefix `/api` และต้องผ่าน session, Origin และ CSRF:
+
+- DELETE `/me/amulets/:id` รับ `{version}` เจ้าของร้านลบได้เฉพาะประกาศของตนเองทุกสถานะ
+- DELETE `/admin/amulets/:id` รับ `{version,reason}` ADMIN/SUPER_ADMIN ลบได้ทุกประกาศ เหตุผลหลัง trim อย่างน้อย 5 ตัวอักษร MODERATOR ไม่มีสิทธิ์
+
+สำเร็จคืน `{ok:true}`; version เก่าคืน 409, ไม่พบ/ลบแล้ว/ไม่ใช่เจ้าของคืน 404 การลบตั้ง `deletedAt`, status CLOSED, featured false และเพิ่ม version พร้อม history และ audit `LISTING_DELETED` ใน transaction เดียวกัน ผู้ดูแลลบของคนอื่นจะส่ง notification พร้อมเหตุผลไป `/dashboard` หนึ่งครั้ง
+
+ประกาศที่ลบไม่แสดงในรายการเจ้าของ/ผู้ดูแล/สาธารณะ/ค้นหา/รายการโปรด/จำนวนประกาศหน้าร้านและสถิติประกาศ ไม่อนุญาตแก้ไข ปิด อนุมัติ หรือปักหมุดซ้ำ ภาพถูกถอนสิทธิ์สาธารณะเว้นแต่ยังใช้ในรายการอื่นที่เผยแพร่ เก็บรายงาน รูป และประวัติไว้เป็นข้อมูลส่วนตัวของเจ้าของ/ผู้มีสิทธิ์ ไม่มีการลบไฟล์ที่อาจใช้ร่วมกัน ไม่มีเมนูกู้คืนประกาศ
+
+ใช้ migration `202610280001_listing_deletion` ทั้ง MySQL สำหรับ local และ PostgreSQL สำหรับ production โดยเพิ่ม nullable column และ index ก่อนปล่อยโค้ดใหม่
+
 POST `/admin/users`: ADMIN สร้างได้เฉพาะ MEMBER; SUPER_ADMIN สร้าง MEMBER/MODERATOR/ADMIN/SUPER_ADMIN ได้ รับ `{username,password,confirmPassword,displayName,role,currentPassword,reason}` รหัสใหม่อย่างน้อย 8 ตัวและยืนยันตรงกัน ต้องยืนยันรหัสผู้ดูแลและมีเหตุผลอย่างน้อย 5 ตัว ตรวจสิทธิ์ซ้ำใน Serializable transaction และลง audit USER_CREATED_BY_ADMIN ไม่คืน passwordHash ไม่ล็อกอินเป็นบัญชีใหม่ และใช้ได้แม้ปิดสมัครสมาชิกสาธารณะ จำกัด 10 ครั้ง/ผู้ดูแล/15 นาที MODERATOR/MEMBER ไม่มีสิทธิ์
 
 PUT `/admin/social`: ADMIN/SUPER_ADMIN ส่ง `{socialLinks:[{id,label,url,enabled}]}` สูงสุด 12 ช่องทาง URL ต้อง HTTPS ยาวไม่เกิน 500 ตัวอักษร เก็บใน site settings JSON โดยคงค่าอื่นไว้ แสดงเฉพาะ enabled ในหน้า /contact และ footer การแก้ settings ทั่วไปคง socialLinks ล่าสุดเพื่อไม่เขียนทับค่าจากเมนู Social

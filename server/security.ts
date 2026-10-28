@@ -97,6 +97,7 @@ export async function createSession(
   return csrfToken;
 }
 export const publicWhere: Prisma.AmuletWhereInput = {
+  deletedAt: null,
   status: "APPROVED",
   shop: { active: true, user: { status: "ACTIVE" } },
   category: { active: true },

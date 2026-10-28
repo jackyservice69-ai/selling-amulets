@@ -184,6 +184,7 @@ model Amulet {
   views           Int                   @default(0)
   createdAt       DateTime              @default(now())
   updatedAt       DateTime              @updatedAt
+  deletedAt       DateTime?
   images          AmuletImage[]
   histories       AmuletStatusHistory[]
   favorites       Favorite[]
@@ -193,6 +194,7 @@ model Amulet {
   @@index([status, categoryId, price])
   @@index([status, views])
   @@index([shopId, status])
+  @@index([deletedAt, status, createdAt])
   @@map("amulets")
 }
 

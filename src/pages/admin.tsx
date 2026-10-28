@@ -17,6 +17,7 @@ import {
   Search,
   ShieldCheck,
   MessageSquare,
+  Trash2,
 } from "lucide-react";
 import { useAuth, useData, send, api } from "../api";
 import {
@@ -32,6 +33,7 @@ import {
   useToast,
 } from "../components/ui";
 import { ImageUpload } from "../components/forms";
+import { DeleteListingDialog } from "../components/delete-listing-dialog";
 import { CreateUserDialog } from "./admin-extra";
 import {
   type Amulet,
@@ -184,6 +186,7 @@ export function AdminListings() {
     stats = useData<Stats>("/admin/stats"),
     list = useData<Page<Amulet>>(`/admin/amulets?${params}`),
     [selected, setSelected] = useState<Amulet | null>(null),
+    [deleting, setDeleting] = useState<Amulet | null>(null),
     [action, setAction] = useState("APPROVED"),
     [reason, setReason] = useState(""),
     [error, setError] = useState<unknown>(null),
@@ -384,6 +387,9 @@ export function AdminListings() {
                           />
                         </Button>
                       )}
+                      {user?.role !== "MODERATOR" && <Button variant="danger" size="sm" onClick={() => setDeleting(a)}>
+                        <Trash2 size={15} />ลบประกาศ
+                      </Button>}
                     </div>
                   </td>
                 </tr>
@@ -393,6 +399,16 @@ export function AdminListings() {
         </div>
         <PageControls data={list.data} />
       </State>
+      {deleting && <DeleteListingDialog key={deleting.id} listing={deleting} managed onClose={() => setDeleting(null)}
+        onDeleted={() => {
+          setDeleting(null);
+          if (list.data?.items.length === 1 && list.data.page > 1) {
+            const next = new URLSearchParams(params);
+            next.set("page", String(list.data.page - 1));
+            setParams(next);
+            stats.reload();
+          } else refresh();
+        }} />}
       <Modal
         open={!!selected}
         onOpenChange={(v) => {

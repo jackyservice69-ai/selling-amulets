@@ -40,6 +40,7 @@ import {
   useToast,
 } from "../components/ui";
 import { ImageUpload, UnsavedGuard } from "../components/forms";
+import { DeleteListingDialog } from "../components/delete-listing-dialog";
 import { AmuletCard, contactLabel } from "../components/catalog";
 import {
   type Amulet,
@@ -121,6 +122,7 @@ export function MemberListings() {
     list = useData<Page<Amulet>>(`/me/amulets?page=${params.get("page") ?? 1}`),
     shop = useData<Shop>("/me/shop"),
     [close, setClose] = useState<Amulet | null>(null),
+    [deleting, setDeleting] = useState<Amulet | null>(null),
     [busy, setBusy] = useState(false),
     [error, setError] = useState<unknown>(null),
     toast = useToast();
@@ -194,6 +196,9 @@ export function MemberListings() {
                     ปิดประกาศ
                   </Button>
                 )}
+                <Button variant="danger" size="sm" onClick={() => setDeleting(a)}>
+                  <Trash2 size={14} />ลบประกาศ
+                </Button>
               </div>
             </article>
           ))}
@@ -205,6 +210,12 @@ export function MemberListings() {
           />
         )}
       </State>
+      {deleting && <DeleteListingDialog key={deleting.id} listing={deleting} onClose={() => setDeleting(null)}
+        onDeleted={() => {
+          setDeleting(null);
+          if (list.data?.items.length === 1 && list.data.page > 1) setParams({ page: String(list.data.page - 1) });
+          else list.reload();
+        }} />}
       <Modal
         open={!!close}
         onOpenChange={(v) => {

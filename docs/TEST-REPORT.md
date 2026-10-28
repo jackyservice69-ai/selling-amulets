@@ -1,5 +1,15 @@
 # รายงานทดสอบระบบสมาชิก รูปภาพ และผู้ดูแล
 
+## เพิ่มการลบประกาศ — 28 ตุลาคม 2026
+
+- `npm test`: ผ่าน 73/73 รวม 13 กรณีใหม่ใน `tests/listing-deletion.test.ts`: เจ้าของทุกสถานะ, สิทธิ์ ADMIN/SUPER_ADMIN/MODERATOR, CSRF/Origin, IDOR, version เก่า, concurrent delete, rollback เมื่อ audit ล้มเหลว, เก็บรายงานและตรวจ public media ที่ใช้ร่วมกัน
+- `npm run lint` และ `npm run build`: ผ่านทั้ง frontend และ server
+- E2E การลบบน desktop/mobile: ผ่าน 2/2 ตรวจ Cancel/Escape/focus restoration, ห้ามยกเลิก/ปิด/ส่งซ้ำขณะรอ API, ข้อผิดพลาดและ retry, เหตุผลผู้ดูแล, public 404 หลังลบและ notification เจ้าของ รูปหลักฐาน `output/playwright/delete-owner-desktop.png`, `delete-admin-mobile.png`
+- เครื่องนี้มีบริการอื่นครอง `127.0.0.1:3002` ทำให้เริ่มชุดทดสอบด้วยค่าเดิม timeout จึงใช้ API ทดสอบพอร์ต 3012 ผ่าน config ชั่วคราวใน `.tools/playwright-deletion.config.ts` โดยไม่เปลี่ยนพอร์ตแอปหรือปิดบริการอื่น
+- Migration PostgreSQL ผ่านบน validation branch แยกจาก production; ทดสอบ owner/manager delete, version conflict, ห้ามเผยแพร่ซ้ำ, ลบพร้อมกันได้ครั้งเดียวและแจ้งเตือนเจ้าของผ่านจริง หลักฐาน `output/postgres-listing-deletion.json`
+- Migration เดียวกันผ่าน local/test MySQL และ production Neon โดยตรวจว่าประกาศจริงเดิมทั้ง 2 รายการยังอยู่ และไม่ได้ลบประกาศจริงระหว่างปล่อยระบบ หลักฐาน `output/listing-deletion-production-migration.json`
+- ใช้ soft deletion เพื่อรักษา report/history/audit และไฟล์ที่ใช้ร่วมกัน โดยนำออกจากรายการเจ้าของ ผู้ดูแล และสาธารณะ การเก็บข้อมูลนี้ไม่ใช่ hard-delete จาก storage
+
 26 ตุลาคม 2026 (Asia/Bangkok) — Windows, Node.js 26.10.0, MySQL 8.0.44, Prisma 6.19.3
 
 เปลี่ยนตามคำขอผู้ใช้เป็น Username + Password อย่างน้อย 8 ตัวอักษร ไม่เก็บอีเมล ไม่ใช้ Gmail และถอด SMTP การยืนยันและการรีเซ็ตผ่านอีเมลออก
