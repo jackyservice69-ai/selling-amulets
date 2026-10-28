@@ -3,6 +3,7 @@ import request from "supertest";
 import sharp from "sharp";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { randomBytes } from "node:crypto";
 import { app } from "../server/app.js";
 import { db } from "../server/db.js";
 import { config } from "../server/config.js";
@@ -371,11 +372,32 @@ describe("ตลาดพระเครื่อง — MySQL integration / rea
     const before = await db.amulet.findUniqueOrThrow({
       where: { id: listingId },
     });
-    await guest.get(`/api/amulets/${listingId}`);
-    await guest.get(`/api/amulets/${listingId}`);
+    expect((await guest.get(`/api/amulets/${listingId}`)).status).toBe(200);
+    expect((await guest.get(`/api/amulets/${listingId}`)).status).toBe(200);
     expect(
       (await db.amulet.findUniqueOrThrow({ where: { id: listingId } })).views,
     ).toBe(before.views);
+  });
+  it("opens listing and shop details concurrently without counting a visitor twice", async () => {
+    const shop = (await alice.get("/api/me/shop")).body;
+    for (const [entityId, path, type] of [
+      [listingId, `/api/amulets/${listingId}`, "amulet"],
+      [shop.id, `/api/shops/${shop.slug}`, "shop"],
+    ] as const) {
+      const previous = type === "amulet"
+        ? await db.amulet.findUniqueOrThrow({ where: { id: entityId } })
+        : await db.shop.findUniqueOrThrow({ where: { id: entityId } });
+      const previousEvents = await db.viewEvent.count({ where: { entityId } });
+      const cookie = `visitor=${randomBytes(32).toString("hex")}`;
+      const responses = await Promise.all(Array.from({ length: 6 }, () => request(app).get(path).set("Cookie", cookie)));
+      expect(responses.map((r) => r.status)).toEqual(Array(6).fill(200));
+      const updated = type === "amulet"
+        ? await db.amulet.findUniqueOrThrow({ where: { id: entityId } })
+        : await db.shop.findUniqueOrThrow({ where: { id: entityId } });
+      expect(updated.views).toBe(previous.views + 1);
+      expect(await db.viewEvent.count({ where: { entityId } })).toBe(previousEvents + 1);
+      expect((await request(app).get(path).set("Cookie", cookie)).status).toBe(200);
+    }
   });
   it("public shop and listing omit private contacts, email and profile phone", async () => {
     const s = await alice.get("/api/me/shop");

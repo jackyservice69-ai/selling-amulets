@@ -304,26 +304,25 @@ export async function recordView(
   visitorKey: string,
 ) {
   const day = new Date().toISOString().slice(0, 10);
-  try {
-    await db.$transaction(async (tx) => {
-      await tx.viewEvent.create({ data: { entityId, type, visitorKey, day } });
-      if (type === "amulet")
-        await tx.amulet.update({
-          where: { id: entityId },
-          data: { views: { increment: 1 } },
-        });
-      else
-        await tx.shop.update({
-          where: { id: entityId },
-          data: { views: { increment: 1 } },
-        });
+  await db.$transaction(async (tx) => {
+    // Let the unique key deduplicate atomically on both PostgreSQL and MySQL.
+    // Do not rely on instanceof across the two separately generated clients.
+    const created = await tx.viewEvent.createMany({
+      data: [{ entityId, type, visitorKey, day }],
+      skipDuplicates: true,
     });
-  } catch (e) {
-    if (
-      !(e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002")
-    )
-      throw e;
-  }
+    if (!created.count) return;
+    if (type === "amulet")
+      await tx.amulet.update({
+        where: { id: entityId },
+        data: { views: { increment: 1 } },
+      });
+    else
+      await tx.shop.update({
+        where: { id: entityId },
+        data: { views: { increment: 1 } },
+      });
+  });
 }
 export async function popupEligible(
   p: {

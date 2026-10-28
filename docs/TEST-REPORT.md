@@ -1,5 +1,13 @@
 # รายงานทดสอบระบบสมาชิก รูปภาพ และผู้ดูแล
 
+## แก้เปิดรูป/หน้าประกาศซ้ำโหลดไม่สำเร็จ — 28 ตุลาคม 2026
+
+- ยืนยันบนเว็บจริง: เปิดประกาศด้วย visitor cookie เดิมครั้งแรก 200 ครั้งที่สอง 500 ขณะที่รูปเต็มและรูปย่อทั้ง 3 รูปตอบ 200 ปัญหาอยู่ใน `recordView` เมื่อบันทึก unique view ซ้ำ โดย error จาก PostgreSQL client ไม่ผ่าน `instanceof` ของ MySQL client
+- แก้ใช้ `createMany({skipDuplicates:true})` และเพิ่ม views เฉพาะเมื่อสร้าง event ใหม่สำเร็จ ทั้งสองคำสั่งอยู่ใน transaction เดียว ไม่ทิ้ง event ถ้าเพิ่มยอดชมไม่สำเร็จ ไม่กลืนข้อผิดพลาดชนิดอื่น ใช้ร่วมกันทั้งหน้าประกาศและหน้าร้าน ไม่ต้องเปลี่ยน schema หรืออัปโหลดรูปใหม่
+- PostgreSQL บน validation branch: ยืนยันว่าก่อนแก้ครั้งที่สองเป็น 500 และหลังแก้เปิดประกาศ/ร้านซ้ำ 3 ครั้ง รวมการเปิดพร้อมกันอย่างละ 6 คำขอผ่านทั้งหมด ยอดชมต่อ visitor ต่อวันเพิ่มครั้งเดียว หลักฐาน `output/postgres-repeat-views.json`
+- MySQL integration: ผ่าน 41/41 รวมการตรวจ status 200 ของการเปิดซ้ำและการเปิดพร้อมกันของประกาศ/ร้าน; lint และ production build ผ่าน
+- E2E desktop/mobile ผ่าน 2/2: คลิกรูปจาก catalog เปิดซ้ำ 3 รอบ สลับรูป เข้าหน้าร้าน และเปิดรายละเอียดอีกครั้ง โดยไม่มี API ที่เกี่ยวข้องตอบ error หลักฐาน `output/playwright/repeat-detail-desktop.png`, `repeat-detail-mobile.png`
+
 ## เพิ่มการลบประกาศ — 28 ตุลาคม 2026
 
 - `npm test`: ผ่าน 73/73 รวม 13 กรณีใหม่ใน `tests/listing-deletion.test.ts`: เจ้าของทุกสถานะ, สิทธิ์ ADMIN/SUPER_ADMIN/MODERATOR, CSRF/Origin, IDOR, version เก่า, concurrent delete, rollback เมื่อ audit ล้มเหลว, เก็บรายงานและตรวจ public media ที่ใช้ร่วมกัน
