@@ -977,6 +977,37 @@ describe("ตลาดพระเครื่อง — MySQL integration / rea
     expect((await manager.get("/api/admin/users")).status).toBe(401);
     expect((await write(admin, adminCsrf, `/admin/users/${adminId}/password`, body)).status).toBe(400);
   });
+  it("removes retired listing columns while preserving normal price create/edit/publication", async () => {
+    const owner = request.agent(app), session = await register(owner, "listing_fields");
+    expect(session.status).toBe(201);
+    const token = session.body.csrf;
+    const upload = await owner.post("/api/uploads").set("Origin", origin).set("X-CSRF-Token", token)
+      .attach("image", await sharp({ create: { width: 30, height: 30, channels: 3, background: "white" } }).png().toBuffer(), "fields.png");
+    expect(upload.status).toBe(201);
+    const body = { ...createBody(), imageIds: [upload.body.id] };
+    const legacy = { material: "ข้อมูลเนื้อพระเดิม", size: "ข้อมูลพิมพ์เดิม", condition: "ข้อมูลสภาพเดิม" };
+    const created = await write(owner, token, "/me/amulets", {
+      ...body, ...legacy, title: `ประกาศช่องข้อมูลใหม่ ${run}`, price: 3125,
+    });
+    expect(created.status).toBe(201);
+    const id = created.body.id;
+    const edited = await write(owner, token, `/me/amulets/${id}`, {
+      ...body, ...legacy, title: created.body.title, price: 4250, version: created.body.version,
+    }, "put");
+    expect(edited.status).toBe(200);
+    expect(Number(edited.body.price)).toBe(4250);
+    expect((await write(admin, adminCsrf, `/admin/amulets/${id}/status`, {
+      version: edited.body.version, status: "APPROVED",
+    })).status).toBe(200);
+    const publicItem = await guest.get(`/api/amulets/${id}`);
+    expect(publicItem.status).toBe(200);
+    expect(Number(publicItem.body.price)).toBe(4250);
+    const ownItem = await owner.get(`/api/me/amulets/${id}`);
+    for (const item of [created.body, edited.body, ownItem.body, publicItem.body])
+      for (const key of Object.keys(legacy)) expect(item).not.toHaveProperty(key);
+    const columns = await db.$queryRaw<Array<{ name: string }>>`SELECT COLUMN_NAME AS name FROM information_schema.columns WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='amulets' AND COLUMN_NAME IN ('material','size','condition')`;
+    expect(columns).toEqual([]);
+  });
   it("logout deletes server session and health checks database", async () => {
     expect((await write(admin, adminCsrf, "/auth/logout", {})).status).toBe(
       200,

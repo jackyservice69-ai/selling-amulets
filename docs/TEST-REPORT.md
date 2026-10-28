@@ -1,5 +1,14 @@
 # รายงานทดสอบระบบสมาชิก รูปภาพ และผู้ดูแล
 
+## ลบเนื้อ/วัสดุ ขนาด/พิมพ์ และสภาพ — 28 ตุลาคม 2026
+
+- ตามคำแก้ไขล่าสุดของผู้ใช้: ลบทั้ง `material`, `size`, `condition` จาก schema, validation, types, seed และฟอร์มเพิ่ม/แก้ไข/รายละเอียดสาธารณะ/หน้าตรวจสอบหลังบ้าน คงราคาและกติกา SALE/SHOW เดิม
+- `npm test`: ผ่าน 75/75 รวมกรณีสร้าง แก้ราคา อนุมัติ เผยแพร่ ตรวจว่า response ไม่มีสามช่อง แม้ client เก่าส่งมา และตรวจ information_schema ว่าลบคอลัมน์จริง
+- `npm run lint` และ `npm run build`: ผ่าน รวม generate clients สำหรับ MySQL/PostgreSQL
+- E2E real-member workflow: ผ่าน 2/2 บน desktop/mobile ตรวจการไม่แสดงช่องเก่าใน create/edit/admin/public และราคาที่แก้ไขยังอ่านกลับได้ รูป `output/playwright/listing-fields-editor-desktop.png`, `listing-fields-editor-mobile.png`
+- Migration `202610280002_simplify_listing_fields` ผ่าน local/test MySQL หลังสำรองแถวประกาศและตรวจราคา/ชื่อ/รหัสเดิมอยู่ครบ ผ่าน PostgreSQL validation branch พร้อม API create/edit/approval/public price; หลักฐาน `output/postgres-listing-fields.json`
+- ปล่อย production แบบ code-first: client ใหม่ไม่อ้างสามคอลัมน์แล้วทำงานกับฐานเดิมได้ จากนั้นสำรองแถวประกาศจริงทั้งหมดและ drop คอลัมน์หลัง deployment READY และคำขอเก่าสิ้นสุด จึงไม่รัน drop ก่อน deploy; หากย้อนกลับไปใช้โค้ดเก่าต้องคืนคอลัมน์พร้อมข้อมูลสำรองก่อน
+
 ## แก้เปิดรูป/หน้าประกาศซ้ำโหลดไม่สำเร็จ — 28 ตุลาคม 2026
 
 - ยืนยันบนเว็บจริง: เปิดประกาศด้วย visitor cookie เดิมครั้งแรก 200 ครั้งที่สอง 500 ขณะที่รูปเต็มและรูปย่อทั้ง 3 รูปตอบ 200 ปัญหาอยู่ใน `recordView` เมื่อบันทึก unique view ซ้ำ โดย error จาก PostgreSQL client ไม่ผ่าน `instanceof` ของ MySQL client

@@ -94,6 +94,8 @@ test("real member → upload → preview → pending → admin approval → publ
     page.getByRole("status").filter({ hasText: "บันทึกร้านค้าแล้ว" }),
   ).toBeVisible();
   await page.goto("/dashboard/new");
+  for (const label of ["เนื้อพระ / วัสดุ", "ขนาด / พิมพ์พระ", "สภาพพระ"])
+    await expect(page.getByLabel(label, { exact: true })).toHaveCount(0);
   await page
     .getByLabel("รูปภาพพระเครื่อง", { exact: true })
     .setInputFiles(Array.from({ length: 12 }, (_, i) => resolve(`public/brand/amulet-${i % 2 + 1}.webp`)));
@@ -130,6 +132,7 @@ test("real member → upload → preview → pending → admin approval → publ
   await expect(page.getByRole("dialog")).toContainText(showcase ? "สำหรับโชว์" : "สำหรับขาย");
   if (showcase) await expect(page.getByRole("dialog")).toContainText("ไม่เปิดขาย");
   await page.keyboard.press("Escape");
+  await page.screenshot({ path: `output/playwright/listing-fields-editor-${info.project.name}.png`, fullPage: true });
   await page.getByRole("button", { name: "ส่งตรวจสอบ", exact: true }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByText("รอตรวจสอบ", { exact: true })).toBeVisible();
@@ -142,6 +145,9 @@ test("real member → upload → preview → pending → admin approval → publ
   expect(listing.images).toHaveLength(12);
   expect(primarySource).toContain(listing.images[0].uploadId);
   await page.goto(`/dashboard/edit/${listing.id}`);
+  for (const label of ["เนื้อพระ / วัสดุ", "ขนาด / พิมพ์พระ", "สภาพพระ"])
+    await expect(page.getByLabel(label, { exact: true })).toHaveCount(0);
+  if (!showcase) await expect(page.getByLabel("ราคาแสดงประกาศ (บาท) *", { exact: true })).toHaveValue("1234");
   await expect(page.getByLabel("ประเภทประกาศ *", { exact: true })).toHaveValue(showcase ? "SHOW" : "SALE");
   await expect(page.locator(".upload-preview img").first()).toHaveAttribute("src", primarySource!);
   const publicContext = await browser.newContext({ baseURL: origin });
@@ -153,6 +159,7 @@ test("real member → upload → preview → pending → admin approval → publ
   await page.goto(`/admin?q=${encodeURIComponent(title)}`);
   await page.getByRole("button", { name: "ตรวจสอบ", exact: true }).click();
   await expect(page.getByRole("dialog")).toContainText(title);
+  await expect(page.getByRole("dialog").locator(".facts dt")).toHaveText(["วัด", "เกจิ", "ปีที่สร้าง"]);
   await expect(
     page.getByRole("dialog").locator(".preview-gallery img"),
   ).toHaveCount(12);
@@ -170,6 +177,7 @@ test("real member → upload → preview → pending → admin approval → publ
   });
   await publicPage.goto(`/amulet/${listing.id}`);
   await expect(publicPage.getByRole("heading", { level: 1 })).toHaveText(title);
+  await expect(publicPage.locator(".facts dt")).toHaveText(["วัด / สำนัก", "เกจิอาจารย์", "ปีที่สร้าง"]);
   await expect(publicPage.locator(".detail-info")).toContainText(showcase ? "สำหรับโชว์" : "สำหรับขาย");
   if (showcase) await expect(publicPage.locator(".detail-price")).toHaveText("ไม่เปิดขาย");
   await publicPage.screenshot({ path: `output/playwright/listing-type-${info.project.name}.png`, fullPage: true });

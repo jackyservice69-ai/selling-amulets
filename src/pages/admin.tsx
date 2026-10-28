@@ -446,9 +446,6 @@ export function AdminListings() {
                 ["วัด", selected.temple],
                 ["เกจิ", selected.master],
                 ["ปีที่สร้าง", selected.year],
-                ["เนื้อ", selected.material],
-                ["พิมพ์", selected.size],
-                ["สภาพ", selected.condition],
               ].map(([k, v]) => (
                 <div key={k}>
                   <dt>{k}</dt>

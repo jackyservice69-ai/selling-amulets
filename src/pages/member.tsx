@@ -284,9 +284,6 @@ function ListingForm({
       temple: initial?.temple ?? "",
       master: initial?.master ?? "",
       year: initial?.year ?? "",
-      material: initial?.material ?? "",
-      size: initial?.size ?? "",
-      condition: initial?.condition ?? "",
       price: initial?.price ?? "",
       priceType: initial?.priceType ?? "FIXED",
       listingType: initial?.listingType ?? "SALE",
@@ -424,9 +421,6 @@ function ListingForm({
               ["temple", "วัด / สำนัก"],
               ["master", "พระเกจิอาจารย์"],
               ["year", "ปีที่สร้าง"],
-              ["material", "เนื้อพระ / วัสดุ"],
-              ["size", "ขนาด / พิมพ์พระ"],
-              ["condition", "สภาพพระ"],
             ] as const
           ).map(([k, l]) => (
             <Field

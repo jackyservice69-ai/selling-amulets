@@ -58,9 +58,6 @@ export interface Amulet {
   temple: string;
   master: string;
   year: string;
-  material: string;
-  size: string;
-  condition: string;
   price: string | null;
   priceType: string;
   listingType: "SALE" | "SHOW";

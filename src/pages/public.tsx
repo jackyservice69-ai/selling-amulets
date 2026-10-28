@@ -571,9 +571,6 @@ export function Detail() {
                     ["วัด / สำนัก", a.temple],
                     ["เกจิอาจารย์", a.master],
                     ["ปีที่สร้าง", a.year],
-                    ["เนื้อ / วัสดุ", a.material],
-                    ["ขนาด / พิมพ์", a.size],
-                    ["สภาพพระ", a.condition],
                   ].map(([k, v]) => (
                     <div key={k}>
                       <dt>{k}</dt>

@@ -1,5 +1,11 @@
 # API — ตลาดพระเครื่อง
 
+## ช่องข้อมูลประกาศที่เลิกใช้ — 28 ตุลาคม 2026
+
+เลิกใช้ `material`, `size`, `condition` ใน Prisma model, payload ที่จัดเก็บ และ response ของทุก API ประกาศ ฟอร์มเพิ่ม/แก้ไข หน้ารายละเอียดสาธารณะ และหน้าตรวจสอบผู้ดูแลไม่มีช่องเหล่านี้แล้ว หาก client รุ่นเก่าส่งมาจะถูก Zod ตัดทิ้ง โดยยังใช้ `price`/`priceType` และกติกา SALE/SHOW เดิม
+
+Migration `202610280002_simplify_listing_fields` ลบทั้งสามคอลัมน์จริงจากตาราง amulets โดยสำรองข้อมูลก่อน ใช้ทั้ง MySQL และ PostgreSQL ลำดับ production คือ deploy โค้ดและ generated client ใหม่ที่ไม่อ่านคอลัมน์เดิมก่อน ตรวจว่า READY และ API ไม่คืนช่องเดิมแล้ว จึงรอคำขอเวอร์ชันเก่าสิ้นสุดและรัน migration การ drop ไม่อยู่ใน build command ของ Vercel และไม่เปลี่ยนราคา รูป สถานะ หรือข้อมูลประกาศส่วนอื่น
+
 ## ลบประกาศ (28 ตุลาคม 2026)
 
 ทุกเส้นทางใช้ prefix `/api` และต้องผ่าน session, Origin และ CSRF:
@@ -102,8 +108,7 @@ Error: `{error: "ข้อความไทย", fields?: [{field, message}]}` 
   "title":"พระเครื่องตัวอย่างสำหรับทดสอบ",
   "description":"รายละเอียดที่เจ้าของประกาศระบุ อย่างน้อยยี่สิบตัวอักษร",
   "categoryId":"ID_FROM_CATEGORIES",
-  "temple":"วัดตัวอย่าง", "master":"", "year":"", "material":"เนื้อผง",
-  "size":"", "condition":"รายละเอียดสภาพ",
+  "temple":"วัดตัวอย่าง", "master":"", "year":"",
   "priceType":"FIXED", "price":2500,
   "imageIds":["ID_FROM_UPLOAD"], "draft":false
 }
